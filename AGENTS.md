@@ -1,5 +1,13 @@
 # Repository Guidelines
 
+## TEA fork scope
+
+Test Engineer Anything (TEA) is a downstream fork focused on evidence-backed test planning, generation, and verification. New TEA code lives in `src/tea/`, `src/teaCli.ts`, `src/teaMcp.ts`, and `scripts/tea.mjs`; inherited REA code remains temporarily as migration infrastructure. Do not describe inherited reverse-engineering capabilities as verified TEA features.
+
+Generated tests must remain traceable to source or runtime evidence. Never convert observed behavior into an assertion of correctness without labeling it as characterization. Mutating product operations require explicit caller scope. Generated code and test targets run with caller authority and are not sandboxed; keep execution inputs, output paths, timeouts, diagnostics, and cleanup explicit.
+
+The inherited guidelines below continue to apply to shared infrastructure and provide the default engineering standards for TEA code.
+
 ## Product and Authority
 
 REA is a local-only reverse-engineering tool with shared CLI/MCP workflows. Distinguish observations, derivations, inferences, and unknowns; preserve Evidence provenance and session semantics through both adapters. Provider support and setup live in [README.md](README.md#choosing-a-deep-analysis-provider) and its linked guides.

@@ -46,6 +46,9 @@ if (await pathExists(join(root, "src"))) {
 } else {
   for (const path of [
     "scripts/lib/cli-process-environment.mjs",
+    "scripts/tea.mjs",
+    "dist/teaCli.js",
+    "dist/teaMcp.js",
     "dist/main.js",
     "dist/mcp/main.js",
     "dist/cli-runtime/cli.js",

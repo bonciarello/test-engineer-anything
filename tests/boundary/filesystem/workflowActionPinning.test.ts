@@ -98,11 +98,11 @@ jobs:
     ).toEqual([]);
   });
 
-  it("also runs the guard for workflow-only changes without preparing runtime artifacts", async () => {
+  it("runs the guard for every TEA workflow change", async () => {
     const workflow = z
       .object({
         jobs: z.object({
-          static: z.object({
+          tea: z.object({
             steps: z.array(
               z.object({
                 if: z.string().optional(),
@@ -112,13 +112,13 @@ jobs:
           }),
         }),
       })
-      .parse(parse(await readFile(join(github, "workflows/ci.yml"), "utf8")));
-    const guard = workflow.jobs.static.steps.find((step) =>
+      .parse(
+        parse(await readFile(join(github, "workflows/tea-ci.yml"), "utf8")),
+      );
+    const guard = workflow.jobs.tea.steps.find((step) =>
       step.run?.includes("workflowActionPinning.test.ts"),
     );
-    expect(guard?.if).toBe(
-      "needs.changes.outputs.workflows == 'true' && needs.changes.outputs.code != 'true'",
-    );
+    expect(guard?.if).toBeUndefined();
     expect(guard?.run).toBe(
       "node scripts/run-exact-tests.mjs run tests/boundary/filesystem/workflowActionPinning.test.ts",
     );

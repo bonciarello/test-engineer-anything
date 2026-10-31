@@ -7,6 +7,8 @@
     "src/cliBuiltinArguments.ts",
     "src/cli/cliResultOutput.ts",
     "src/mcpDoctor.ts",
+    "src/teaCli.ts",
+    "src/teaMcp.ts",
     "src/composition/javascriptAnalysisWorkerProcess.ts",
     "src/composition/webBundleAnalysisWorkerProcess.ts",
     "src/contracts/errorSchemas.ts",

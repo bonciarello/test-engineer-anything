@@ -1,0 +1,146 @@
+import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import { z } from "zod";
+
+import { PACKAGE_METADATA } from "./generatedPackageMetadata.js";
+import {
+  analyzeProduct,
+  generateTestArtifacts,
+  planContractTests,
+  verifyGeneratedTests,
+} from "./tea/index.js";
+import { TeaError, type PublicFailure } from "./tea/types.js";
+
+const analyzeSchema = z.object({ repoDir: z.string().min(1) });
+const planSchema = z.object({ repoDir: z.string().min(1) });
+const generateSchema = z.object({
+  repoDir: z.string().min(1),
+  outputDir: z.string().min(1),
+  overwrite: z.boolean().optional(),
+});
+const verifySchema = z.object({
+  testFile: z.string().min(1),
+  baseUrl: z.string().min(1),
+  timeoutMs: z.number().positive().optional(),
+});
+
+/** Build the TEA MCP server with all four tools registered. */
+export const createTeaMcpServer = (): McpServer => {
+  const server = new McpServer(
+    { name: "tea-agents", version: PACKAGE_METADATA.version },
+    { capabilities: { tools: {} } },
+  );
+
+  server.registerTool(
+    "analyze_product",
+    {
+      title: "Analyze product",
+      description:
+        "Analyze a Node/TypeScript repository: package.json, source-file inventory, and OpenAPI 3 specs.",
+      inputSchema: analyzeSchema,
+    },
+    (input) => handle(() => analyzeProduct(input.repoDir)),
+  );
+
+  server.registerTool(
+    "plan_tests",
+    {
+      title: "Plan tests",
+      description:
+        "Plan contract tests for GET/HEAD OpenAPI operations, with evidence and exclusions.",
+      inputSchema: planSchema,
+    },
+    (input) => handle(() => planContractTests({ repoDir: input.repoDir })),
+  );
+
+  server.registerTool(
+    "generate_tests",
+    {
+      title: "Generate tests",
+      description:
+        "Generate a standalone node:test .mjs file and tea-plan.json into an output directory.",
+      inputSchema: generateSchema,
+    },
+    (input) =>
+      handle(() =>
+        generateTestArtifacts({
+          repoDir: input.repoDir,
+          outputDir: input.outputDir,
+          ...(input.overwrite === undefined
+            ? {}
+            : { overwrite: input.overwrite }),
+        }),
+      ),
+  );
+
+  server.registerTool(
+    "verify_tests",
+    {
+      title: "Verify tests",
+      description:
+        "Run a generated test file against a live TEA_BASE_URL and return a structured report.",
+      inputSchema: verifySchema,
+    },
+    (input) =>
+      handle(() =>
+        verifyGeneratedTests({
+          testFile: input.testFile,
+          baseUrl: input.baseUrl,
+          ...(input.timeoutMs === undefined
+            ? {}
+            : { timeoutMs: input.timeoutMs }),
+        }),
+      ),
+  );
+
+  return server;
+};
+
+/**
+ * Serve the TEA MCP server over stdio. Exported only — importing this module
+ * has no side effects. Resolves once stdin closes (clean shutdown).
+ */
+export const runTeaMcpEntrypoint = async (): Promise<void> => {
+  const handle = serveStdio(() => createTeaMcpServer());
+  const shutdown = (): void => {
+    void handle.close().catch(() => undefined);
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+  await new Promise<void>((resolve) => {
+    const finish = (): void => {
+      process.removeListener("SIGINT", shutdown);
+      process.removeListener("SIGTERM", shutdown);
+      resolve();
+    };
+    process.stdin.once("end", finish);
+    process.stdin.once("close", finish);
+  });
+  await handle.close().catch(() => undefined);
+};
+
+/** Wrap a tool operation, returning structuredContent on success and a stack-free failure on error. */
+const handle = async <T>(
+  operation: () => Promise<T>,
+): Promise<CallToolResult> => {
+  try {
+    const result = await operation();
+    return {
+      content: [{ type: "text", text: "ok" }],
+      structuredContent: result as Record<string, unknown>,
+    };
+  } catch (cause) {
+    const failure = toPublicFailure(cause);
+    return {
+      content: [{ type: "text", text: failure.message }],
+      structuredContent: { ok: false, error: failure },
+      isError: true,
+    };
+  }
+};
+
+const toPublicFailure = (cause: unknown): PublicFailure => {
+  if (cause instanceof TeaError)
+    return { code: cause.code, message: cause.message };
+  return { code: "internal", message: "unexpected failure" };
+};

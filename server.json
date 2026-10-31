@@ -1,20 +1,20 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.morluto/rea",
-  "title": "REA",
-  "description": "Reverse engineer anything from your terminal or agent with one CLI and MCP server.",
-  "websiteUrl": "https://github.com/morluto/rea",
+  "name": "io.github.bonciarello/test-engineer-anything",
+  "title": "Test Engineer Anything",
+  "description": "Analyze products and generate evidence-backed executable tests from your terminal or agent.",
+  "websiteUrl": "https://github.com/bonciarello/test-engineer-anything",
   "repository": {
-    "url": "https://github.com/morluto/rea",
+    "url": "https://github.com/bonciarello/test-engineer-anything",
     "source": "github"
   },
-  "version": "6.8.0",
+  "version": "0.1.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "rea-agents",
-      "version": "6.8.0",
+      "identifier": "tea-agents",
+      "version": "0.1.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
