@@ -10,14 +10,16 @@ import type { VerifyInput, VerifyTestsResult } from "./types.js";
 import { TeaError } from "./types.js";
 
 /**
- * Run a generated contract test file with `node --test` against a validated
- * TEA_BASE_URL. The executed command never contains the base URL (it is passed
- * via the environment), so the reported command carries no secrets.
+ * Run a generated TEA test file with `node --test`: contract tests against a
+ * validated TEA_BASE_URL, or source tests without a base URL. The executed
+ * command never contains the base URL (it is passed via the environment), so
+ * the reported command carries no secrets.
  */
 export const verifyGeneratedTests = async (
   input: VerifyInput,
 ): Promise<VerifyTestsResult> => {
-  const baseUrl = validateBaseUrl(input.baseUrl);
+  const baseUrl =
+    input.baseUrl === undefined ? null : validateBaseUrl(input.baseUrl);
   const testFile = await resolveTestFile(input.testFile);
   const timeoutMs = input.timeoutMs ?? DEFAULT_VERIFY_TIMEOUT_MS;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
@@ -27,7 +29,7 @@ export const verifyGeneratedTests = async (
   const started = performance.now();
   const outcome = await runBounded(
     command,
-    { TEA_BASE_URL: baseUrl },
+    baseUrl === null ? {} : { TEA_BASE_URL: baseUrl },
     timeoutMs,
   );
   const limitations: string[] = [];
@@ -38,7 +40,7 @@ export const verifyGeneratedTests = async (
 
   return {
     testFile,
-    baseUrl: redactCredentials(baseUrl),
+    baseUrl: baseUrl === null ? null : redactCredentials(baseUrl),
     command,
     exitCode: outcome.exitCode,
     timedOut: outcome.timedOut,

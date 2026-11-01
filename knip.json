@@ -17,6 +17,12 @@
     "scripts/verify-real-ghidra-noreturn.mjs",
     "scripts/verify-real-ghidra-decompiler-failure.mjs",
     "scripts/verify-real-ghidra-decompile-timeout.mjs",
+    "scripts/ci/prepare-npm-publication.mjs",
+    "scripts/release-proposal.mjs",
+    "scripts/verify-packet-capture.mjs",
+    "scripts/verify-release-artifact.mjs",
+    "scripts/verify-signal-recording.mjs",
+    "scripts/verify-windows-native-inspection.mjs",
     "tests/processOwnershipRunner.ts"
   ],
   "project": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.mjs"],

@@ -137,7 +137,8 @@ export interface GenerateTestsResult {
 
 export interface VerifyTestsResult {
   readonly testFile: string;
-  readonly baseUrl: string;
+  /** Null when no base URL was supplied (source tests do not need one). */
+  readonly baseUrl: string | null;
   /** Executed command; never contains the base URL or other secrets. */
   readonly command: readonly string[];
   readonly exitCode: number | null;
@@ -162,6 +163,76 @@ export interface GenerateInput {
 
 export interface VerifyInput {
   readonly testFile: string;
-  readonly baseUrl: string;
+  /** Optional: source tests do not need a base URL; contract tests do. */
+  readonly baseUrl?: string;
   readonly timeoutMs?: number;
+}
+
+/** Primitive TypeScript parameter/return types accepted by source tests. */
+export type SourcePrimitive = "number" | "string" | "boolean";
+
+/** Runtime values a source-test interpreter can produce or consume. */
+export type SourcePrimitiveValue = number | string | boolean;
+
+/** Provenance required on every planned source-test case. */
+export interface SourceEvidence {
+  /** Absolute path of the analyzed `.ts` source file. */
+  readonly sourcePath: string;
+  readonly exportName: string;
+  readonly line: number;
+  readonly column: number;
+  readonly confidence: "derived";
+  readonly authority: "shipped-artifact";
+  readonly limitations: readonly string[];
+}
+
+/** A single unit/regression case derived from a pure exported function. */
+export interface SourceTestCase {
+  readonly id: string;
+  readonly sourcePath: string;
+  readonly exportName: string;
+  readonly description: string;
+  readonly args: readonly SourcePrimitiveValue[];
+  readonly expected: SourcePrimitiveValue;
+  readonly evidence: SourceEvidence;
+}
+
+/** An exported symbol that was deliberately not turned into a source test. */
+export interface ExcludedSourceExport {
+  readonly sourcePath: string;
+  /** Null for module-level exclusions without a specific export name. */
+  readonly exportName: string | null;
+  readonly line: number;
+  readonly column: number;
+  readonly reason: string;
+}
+
+/** The source-test plan shared by generate and verify workflows. */
+export interface SourceTestPlan {
+  readonly repoDir: string;
+  /** Absolute paths of every `.ts` source file considered. */
+  readonly sourceFiles: readonly string[];
+  readonly cases: readonly SourceTestCase[];
+  readonly excluded: readonly ExcludedSourceExport[];
+  readonly limitations: readonly string[];
+}
+
+export interface PlanSourceInput {
+  readonly repoDir: string;
+  readonly analysis?: AnalyzeProductResult;
+}
+
+export interface GenerateSourceInput {
+  readonly repoDir: string;
+  readonly outputDir: string;
+  readonly overwrite?: boolean;
+  readonly plan?: SourceTestPlan;
+}
+
+export interface GenerateSourceResult {
+  readonly outputDir: string;
+  readonly files: readonly GeneratedFile[];
+  readonly caseCount: number;
+  readonly excludedCount: number;
+  readonly limitations: readonly string[];
 }

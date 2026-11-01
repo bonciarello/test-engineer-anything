@@ -4,8 +4,10 @@ import { z } from "zod";
 import { PACKAGE_METADATA } from "./generatedPackageMetadata.js";
 import {
   analyzeProduct,
+  generateSourceTestArtifacts,
   generateTestArtifacts,
   planContractTests,
+  planSourceTests,
   verifyGeneratedTests,
 } from "./tea/index.js";
 import { TeaError } from "./tea/types.js";
@@ -19,9 +21,14 @@ const generateSchema = z.object({
   outputDir: z.string().min(1),
   overwrite: z.boolean().optional(),
 });
+const generateSourceSchema = z.object({
+  repoDir: z.string().min(1),
+  outputDir: z.string().min(1),
+  overwrite: z.boolean().optional(),
+});
 const verifySchema = z.object({
   testFile: z.string().min(1),
-  baseUrl: z.string().min(1),
+  baseUrl: z.string().min(1).optional(),
   timeoutMs: z.number().positive().optional(),
 });
 
@@ -32,9 +39,21 @@ const COMMANDS: Readonly<Record<string, CommandHandler>> = {
     analyzeProduct(analyzeSchema.parse(input).repoDir),
   "plan-tests": async (input) =>
     planContractTests({ repoDir: planSchema.parse(input).repoDir }),
+  "plan-source-tests": async (input) =>
+    planSourceTests({ repoDir: planSchema.parse(input).repoDir }),
   "generate-tests": async (input) => {
     const parsed = generateSchema.parse(input);
     return generateTestArtifacts({
+      repoDir: parsed.repoDir,
+      outputDir: parsed.outputDir,
+      ...(parsed.overwrite === undefined
+        ? {}
+        : { overwrite: parsed.overwrite }),
+    });
+  },
+  "generate-source-tests": async (input) => {
+    const parsed = generateSourceSchema.parse(input);
+    return generateSourceTestArtifacts({
       repoDir: parsed.repoDir,
       outputDir: parsed.outputDir,
       ...(parsed.overwrite === undefined
@@ -46,7 +65,7 @@ const COMMANDS: Readonly<Record<string, CommandHandler>> = {
     const parsed = verifySchema.parse(input);
     return verifyGeneratedTests({
       testFile: parsed.testFile,
-      baseUrl: parsed.baseUrl,
+      ...(parsed.baseUrl === undefined ? {} : { baseUrl: parsed.baseUrl }),
       ...(parsed.timeoutMs === undefined
         ? {}
         : { timeoutMs: parsed.timeoutMs }),
@@ -60,17 +79,21 @@ Usage:
   tea <command> [--input <file>]
 
 Commands:
-  analyze-product    Analyze a repository: package.json, source inventory, OpenAPI specs
-  plan-tests         Plan GET/HEAD contract tests from discovered OpenAPI 3 specs
-  generate-tests     Generate a standalone node:test .mjs file and tea-plan.json
-  verify-tests       Run a generated test file against a live TEA_BASE_URL
+  analyze-product        Analyze a repository: package.json, source inventory, OpenAPI specs
+  plan-tests             Plan GET/HEAD contract tests from discovered OpenAPI 3 specs
+  plan-source-tests      Plan unit/regression tests from pure exported TypeScript functions
+  generate-tests         Generate a standalone node:test .mjs file and tea-plan.json
+  generate-source-tests  Generate tea-source-tests.mjs and tea-source-plan.json
+  verify-tests           Run a generated test file against a live TEA_BASE_URL (optional for source tests)
 
 Each command reads one JSON document from stdin (or from --input <file>):
 
-  analyze-product   { "repoDir": "/path/to/repo" }
-  plan-tests        { "repoDir": "/path/to/repo" }
-  generate-tests    { "repoDir": "...", "outputDir": "...", "overwrite": false }
-  verify-tests      { "testFile": "...", "baseUrl": "http://localhost:3000", "timeoutMs": 30000 }
+  analyze-product        { "repoDir": "/path/to/repo" }
+  plan-tests             { "repoDir": "/path/to/repo" }
+  plan-source-tests      { "repoDir": "/path/to/repo" }
+  generate-tests         { "repoDir": "...", "outputDir": "...", "overwrite": false }
+  generate-source-tests  { "repoDir": "...", "outputDir": "...", "overwrite": false }
+  verify-tests           { "testFile": "...", "baseUrl": "http://localhost:3000", "timeoutMs": 30000 }
 
 Options:
   --help, -h         Show this help

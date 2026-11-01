@@ -12,7 +12,7 @@ import { countOperations, parseSpecDocument } from "./specs.js";
 import type { AnalyzeProductResult, AnalyzedSpec } from "./types.js";
 import { TeaError } from "./types.js";
 
-interface TraversalAccumulator {
+export interface TraversalAccumulator {
   readonly sourceFiles: string[];
   readonly specCandidates: string[];
   readonly visited: number;
@@ -89,7 +89,7 @@ export const analyzeProduct = async (
 };
 
 /** Resolve a caller-provided repository path to a real directory. */
-const canonicalDirectory = async (repoDir: string): Promise<string> => {
+export const canonicalDirectory = async (repoDir: string): Promise<string> => {
   if (typeof repoDir !== "string" || repoDir.trim() === "")
     throw new TeaError("invalid_input", "repoDir must be a non-empty path");
   let real: string;
@@ -158,7 +158,9 @@ const readProductMetadata = async (
 };
 
 /** Bounded, symlink-safe directory walk collecting source files and spec candidates. */
-const walkRepository = async (root: string): Promise<TraversalAccumulator> => {
+export const walkRepository = async (
+  root: string,
+): Promise<TraversalAccumulator> => {
   const sourceFiles: string[] = [];
   const specCandidates: string[] = [];
   let visited = 0;

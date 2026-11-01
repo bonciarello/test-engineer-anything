@@ -22,7 +22,7 @@ jobs:
       - run: npm ci
       - run: node scripts/run-exact-tests.mjs run tests/boundary/filesystem/workflowActionPinning.test.ts
       - run: npm run typecheck
-      - run: npm run test:local -- src/teaCore.test.ts src/teaMcp.test.ts
+      - run: npm run test:local -- src/teaCore.test.ts src/teaMcp.test.ts src/teaSource.test.ts
       - run: npm run build:cached
       - run: node scripts/tea.mjs --version
       - run: node scripts/verify-tea-example.mjs

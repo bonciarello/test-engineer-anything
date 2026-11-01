@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0
+
+### Features
+
+- Plan and generate source-derived regression tests for pure, annotated TypeScript functions.
+- Precompute expected primitive values with a bounded AST interpreter; never execute target modules during analysis or generation.
+- Add `plan-source-tests` and `generate-source-tests` to the CLI, plus `plan_source_tests` and `generate_source_tests` through MCP.
+- Allow verification of source tests without a base URL while preserving OpenAPI contract verification.
+- Add source-generation example coverage to the end-to-end CI workflow.
+
+### Fixes
+
+- Bound individual TypeScript source-file reads and match JavaScript relational semantics for unordered numeric operands.
+- Canonicalize generated output roots so relative TypeScript imports remain valid below symlinked parent directories.
+- Split source planning, interpretation, and rendering into cohesive modules.
+
 ## 0.1.0
 
 ### Features

@@ -16,6 +16,20 @@ export const TEA_LIMITS = {
   maxFileNameLength: 512,
 } as const;
 
+/** Explicit resource bounds for source-test planning and interpretation. */
+export const SOURCE_TEST_LIMITS = {
+  /** Maximum `.ts` source files parsed during source-test planning. */
+  maxSourceFiles: 200,
+  /** Maximum bytes read for any single `.ts` source file. */
+  maxSourceBytes: 1024 * 1024,
+  /** Maximum exported functions planned across all files. */
+  maxSourceFunctions: 100,
+  /** Maximum generated cases for a single exported function. */
+  maxCasesPerFunction: 16,
+  /** Maximum AST nodes visited while validating or interpreting one expression. */
+  maxInterpreterSteps: 2_000,
+} as const;
+
 /** Default verify timeout in milliseconds. */
 export const DEFAULT_VERIFY_TIMEOUT_MS = 30_000;
 

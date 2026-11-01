@@ -49,6 +49,37 @@ try {
   if (testFile === undefined)
     throw new Error("generated test artifact is missing");
 
+  const sourcePlan = run("plan-source-tests", { repoDir: example });
+  if (
+    sourcePlan.cases.length < 3 ||
+    !sourcePlan.cases.every(
+      (testCase) =>
+        testCase.evidence.confidence === "derived" &&
+        testCase.sourcePath.endsWith("calculations.ts"),
+    )
+  )
+    throw new Error("example did not produce evidence-backed source tests");
+  const sourceGenerated = run("generate-source-tests", {
+    repoDir: example,
+    outputDir: join(workspace, "source-generated"),
+  });
+  const sourceTestFile = sourceGenerated.files.find(
+    (file) => file.kind === "test",
+  )?.path;
+  if (sourceTestFile === undefined)
+    throw new Error("generated source-test artifact is missing");
+  const sourceVerification = run("verify-tests", {
+    testFile: sourceTestFile,
+  });
+  if (
+    !sourceVerification.passed ||
+    sourceVerification.exitCode !== 0 ||
+    sourceVerification.baseUrl !== null
+  )
+    throw new Error(
+      `generated source tests failed: ${sourceVerification.output}`,
+    );
+
   server = spawn(process.execPath, [join(example, "server.mjs")], {
     cwd: root,
     env: { ...process.env, PORT: "0" },
@@ -93,6 +124,8 @@ try {
       plannedCases: plan.cases.length,
       excludedOperations: plan.excluded.length,
       verificationPassed: verification.passed,
+      sourcePlannedCases: sourcePlan.cases.length,
+      sourceVerificationPassed: sourceVerification.passed,
     })}\n`,
   );
 } finally {

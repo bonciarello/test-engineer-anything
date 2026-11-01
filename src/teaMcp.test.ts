@@ -22,16 +22,48 @@ const connect = async (): Promise<{
 };
 
 describe("tea MCP server", () => {
-  it("advertises the four tools", async () => {
+  it("advertises the six tools", async () => {
     const { server, client } = await connect();
     try {
       const tools = await client.listTools();
       expect(tools.tools.map((tool) => tool.name).sort()).toEqual([
         "analyze_product",
+        "generate_source_tests",
         "generate_tests",
+        "plan_source_tests",
         "plan_tests",
         "verify_tests",
       ]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("plans source tests through plan_source_tests", async () => {
+    const root = await createTestTempDirectory("tea-mcp-source-");
+    await writeFile(
+      join(root, "package.json"),
+      JSON.stringify({ name: "mcp-source", version: "1.0.0", type: "module" }),
+    );
+    await writeFile(
+      join(root, "src.ts"),
+      "export const add = (a: number, b: number): number => a + b;\n",
+    );
+    const { server, client } = await connect();
+    try {
+      const result = await client.callTool({
+        name: "plan_source_tests",
+        arguments: { repoDir: root },
+      });
+      expect(result.isError).toBeUndefined();
+      const structured = result.structuredContent as {
+        cases?: unknown[];
+        repoDir?: string;
+      };
+      expect(Array.isArray(structured.cases)).toBe(true);
+      expect((structured.cases ?? []).length).toBeGreaterThan(0);
+      expect(structured.repoDir).toBe(root);
     } finally {
       await client.close();
       await server.close();

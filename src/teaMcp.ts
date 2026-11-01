@@ -5,8 +5,10 @@ import { z } from "zod";
 import { PACKAGE_METADATA } from "./generatedPackageMetadata.js";
 import {
   analyzeProduct,
+  generateSourceTestArtifacts,
   generateTestArtifacts,
   planContractTests,
+  planSourceTests,
   verifyGeneratedTests,
 } from "./tea/index.js";
 import { TeaError, type PublicFailure } from "./tea/types.js";
@@ -18,13 +20,18 @@ const generateSchema = z.object({
   outputDir: z.string().min(1),
   overwrite: z.boolean().optional(),
 });
+const generateSourceSchema = z.object({
+  repoDir: z.string().min(1),
+  outputDir: z.string().min(1),
+  overwrite: z.boolean().optional(),
+});
 const verifySchema = z.object({
   testFile: z.string().min(1),
-  baseUrl: z.string().min(1),
+  baseUrl: z.string().min(1).optional(),
   timeoutMs: z.number().positive().optional(),
 });
 
-/** Build the TEA MCP server with all four tools registered. */
+/** Build the TEA MCP server with all six tools registered. */
 export const createTeaMcpServer = (): McpServer => {
   const server = new McpServer(
     { name: "tea-agents", version: PACKAGE_METADATA.version },
@@ -54,6 +61,17 @@ export const createTeaMcpServer = (): McpServer => {
   );
 
   server.registerTool(
+    "plan_source_tests",
+    {
+      title: "Plan source tests",
+      description:
+        "Plan unit/regression tests from pure exported TypeScript functions, with evidence and exclusions.",
+      inputSchema: planSchema,
+    },
+    (input) => handle(() => planSourceTests({ repoDir: input.repoDir })),
+  );
+
+  server.registerTool(
     "generate_tests",
     {
       title: "Generate tests",
@@ -74,18 +92,38 @@ export const createTeaMcpServer = (): McpServer => {
   );
 
   server.registerTool(
+    "generate_source_tests",
+    {
+      title: "Generate source tests",
+      description:
+        "Generate tea-source-tests.mjs and tea-source-plan.json into an output directory.",
+      inputSchema: generateSourceSchema,
+    },
+    (input) =>
+      handle(() =>
+        generateSourceTestArtifacts({
+          repoDir: input.repoDir,
+          outputDir: input.outputDir,
+          ...(input.overwrite === undefined
+            ? {}
+            : { overwrite: input.overwrite }),
+        }),
+      ),
+  );
+
+  server.registerTool(
     "verify_tests",
     {
       title: "Verify tests",
       description:
-        "Run a generated test file against a live TEA_BASE_URL and return a structured report.",
+        "Run a generated test file, optionally against a live TEA_BASE_URL, and return a structured report.",
       inputSchema: verifySchema,
     },
     (input) =>
       handle(() =>
         verifyGeneratedTests({
           testFile: input.testFile,
-          baseUrl: input.baseUrl,
+          ...(input.baseUrl === undefined ? {} : { baseUrl: input.baseUrl }),
           ...(input.timeoutMs === undefined
             ? {}
             : { timeoutMs: input.timeoutMs }),
