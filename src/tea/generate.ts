@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { prepareOutputDirectory, writeOutputFile } from "./output.js";
 import { planContractTests } from "./plan.js";
+import { writeArtifactManifest } from "./artifact.js";
 import { parseSpecDocument } from "./specs.js";
 import { VALIDATOR_CODE } from "./validatorTemplate.js";
 import type {
@@ -69,6 +70,15 @@ export const generateTestArtifacts = async (
   await writeOutputFile(planPath, planContent, overwrite);
   files.push({ path: testPath, kind: "test" });
   files.push({ path: planPath, kind: "plan" });
+  const manifestPath = await writeArtifactManifest({
+    kind: "contract",
+    testPath,
+    planPath,
+    testContent,
+    planContent,
+    overwrite,
+  });
+  files.push({ path: manifestPath, kind: "manifest" });
 
   return {
     outputDir,

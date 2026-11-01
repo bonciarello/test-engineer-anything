@@ -1,6 +1,7 @@
 import { isAbsolute, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { writeArtifactManifest } from "./artifact.js";
 import { prepareOutputDirectory, writeOutputFile } from "./output.js";
 import { planSourceTests } from "./sourcePlanner.js";
 import type {
@@ -32,6 +33,15 @@ export const generateSourceTestArtifacts = async (
   await writeOutputFile(planPath, planContent, overwrite);
   files.push({ path: testPath, kind: "test" });
   files.push({ path: planPath, kind: "plan" });
+  const manifestPath = await writeArtifactManifest({
+    kind: "source",
+    testPath,
+    planPath,
+    testContent,
+    planContent,
+    overwrite,
+  });
+  files.push({ path: manifestPath, kind: "manifest" });
 
   return {
     outputDir,

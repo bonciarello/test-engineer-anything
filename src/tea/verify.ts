@@ -1,11 +1,13 @@
 import { spawn, type SpawnOptions } from "node:child_process";
-import { stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdtemp, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import {
   DEFAULT_VERIFY_TIMEOUT_MS,
   MAX_VERIFY_OUTPUT_BYTES,
 } from "./limits.js";
+import { admitGeneratedArtifact } from "./artifact.js";
 import type {
   CoverageSummary,
   VerifyInput,
@@ -25,6 +27,8 @@ export const verifyGeneratedTests = async (
   const baseUrl =
     input.baseUrl === undefined ? null : validateBaseUrl(input.baseUrl);
   const testFile = await resolveTestFile(input.testFile);
+  if ((input.artifactPolicy ?? "required") === "required")
+    await admitGeneratedArtifact(testFile);
   const timeoutMs = input.timeoutMs ?? DEFAULT_VERIFY_TIMEOUT_MS;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
     throw new TeaError("invalid_input", "timeoutMs must be a positive number");
@@ -48,12 +52,20 @@ export const verifyGeneratedTests = async (
       command.push(`--test-coverage-include=${sourcePath}`);
   }
   command.push(testFile);
+  const environment = createChildEnvironment(baseUrl);
+  const workingDirectory = await mkdtemp(join(tmpdir(), "tea-run-"));
   const started = performance.now();
-  const outcome = await runBounded(
-    command,
-    baseUrl === null ? {} : { TEA_BASE_URL: baseUrl },
-    timeoutMs,
-  );
+  let outcome: CommandOutcome;
+  try {
+    outcome = await runBounded(
+      command,
+      environment.values,
+      timeoutMs,
+      workingDirectory,
+    );
+  } finally {
+    await rm(workingDirectory, { recursive: true, force: true });
+  }
   const limitations: string[] = [];
   if (outcome.truncated)
     limitations.push(
@@ -75,6 +87,11 @@ export const verifyGeneratedTests = async (
     durationMs: Math.round(performance.now() - started),
     output: outcome.output,
     limitations,
+    environment: {
+      inheritedAmbient: false,
+      forwardedVariables: environment.forwardedVariables,
+      explicitVariables: environment.explicitVariables,
+    },
     ...(randomSeed === undefined ? {} : { randomSeed }),
     ...(coverageRequested ? { coverage } : {}),
   };
@@ -130,6 +147,43 @@ const resolveTestFile = async (testFile: string): Promise<string> => {
   return resolved;
 };
 
+interface ChildEnvironment {
+  readonly values: Record<string, string>;
+  readonly forwardedVariables: readonly string[];
+  readonly explicitVariables: readonly string[];
+}
+
+const createChildEnvironment = (baseUrl: string | null): ChildEnvironment => {
+  const ambientNames =
+    process.platform === "win32"
+      ? [
+          "PATH",
+          "PATHEXT",
+          "SYSTEMROOT",
+          "SYSTEMDRIVE",
+          "WINDIR",
+          "COMSPEC",
+          "TEMP",
+          "TMP",
+          "NUMBER_OF_PROCESSORS",
+        ]
+      : ["PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "TMPDIR", "TEMP", "TMP"];
+  const values: Record<string, string> = {};
+  const forwardedVariables: string[] = [];
+  for (const name of ambientNames) {
+    const value = process.env[name];
+    if (value === undefined) continue;
+    values[name] = value;
+    forwardedVariables.push(name);
+  }
+  const explicitVariables: string[] = [];
+  if (baseUrl !== null) {
+    values.TEA_BASE_URL = baseUrl;
+    explicitVariables.push("TEA_BASE_URL");
+  }
+  return { values, forwardedVariables, explicitVariables };
+};
+
 interface CommandOutcome {
   readonly exitCode: number | null;
   readonly timedOut: boolean;
@@ -141,6 +195,7 @@ const runBounded = (
   command: readonly string[],
   env: Readonly<Record<string, string>>,
   timeoutMs: number,
+  workingDirectory: string,
 ): Promise<CommandOutcome> =>
   new Promise((resolveOutcome) => {
     const executable = command[0];
@@ -148,7 +203,8 @@ const runBounded = (
       throw new TeaError("internal", "empty command");
     const options: SpawnOptions = {
       shell: false,
-      env: { ...process.env, ...env },
+      env,
+      cwd: workingDirectory,
       stdio: ["ignore", "pipe", "pipe"],
     };
     const child = spawn(executable, command.slice(1), options);

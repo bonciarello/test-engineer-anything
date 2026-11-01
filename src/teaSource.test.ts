@@ -212,6 +212,7 @@ describe("generateSourceTestArtifacts", () => {
     });
     expect(result.caseCount).toBe(plan.cases.length);
     expect(result.files.map((file) => file.kind).sort()).toEqual([
+      "manifest",
       "plan",
       "test",
     ]);

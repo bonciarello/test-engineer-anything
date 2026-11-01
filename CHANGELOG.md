@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0
+
+### Features
+
+- Add SHA-256 sidecar manifests for contract and source test artifacts.
+- Require matching test and plan digests before public verification.
+- Reject missing or malformed manifests, symlinked artifacts, and oversized inputs.
+- Execute tests in a fresh temporary working directory with bounded cleanup.
+- Replace ambient environment inheritance with a small platform allowlist; forward `TEA_BASE_URL` only as an explicit caller input.
+- Report forwarded and explicit environment variable names without exposing their values.
+
+### Validation
+
+- Cover artifact tampering, missing and symlinked manifests, ambient-secret filtering, and temporary working-directory execution.
+
 ## 0.3.0
 
 ### Features

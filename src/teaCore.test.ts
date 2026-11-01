@@ -273,6 +273,7 @@ describe("generateTestArtifacts", () => {
     const result = await generateTestArtifacts({ repoDir: root, outputDir });
     expect(result.caseCount).toBeGreaterThan(0);
     expect(result.files.map((file) => file.kind).sort()).toEqual([
+      "manifest",
       "plan",
       "test",
     ]);

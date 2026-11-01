@@ -4,7 +4,7 @@
 
 TEA is a downstream fork of [REA](https://github.com/morluto/rea), repurposed for test engineering. It analyzes Node.js/TypeScript repositories and OpenAPI 3 specifications, plans non-mutating HTTP contract tests and source-derived regression tests, generates standalone suites, and executes them against the selected product or modules.
 
-> **Status: 0.3.0 MVP.** The implemented workflows are deterministic and do not require an LLM. Browser exploration and AI-assisted scenario synthesis are roadmap items, not features claimed by this release.
+> **Status: 0.4.0 MVP.** The implemented workflows are deterministic and do not require an LLM. Browser exploration and AI-assisted scenario synthesis are roadmap items, not features claimed by this release.
 
 ## What works today
 
@@ -19,6 +19,8 @@ TEA is a downstream fork of [REA](https://github.com/morluto/rea), repurposed fo
 - Stability checks with randomized test order and deterministic seeds.
 - Mutation testing on copied sources, with killed/survived/invalid outcomes and a configurable quality threshold.
 - Native Node coverage for generated suites and optional deltas against an existing suite.
+- SHA-256 manifests and digest admission for generated tests and plans.
+- Temporary working directories and allowlisted child-process environments without ambient credential inheritance.
 - No HTTP requests during analysis, planning, or generation.
 
 ## Requirements
@@ -66,7 +68,8 @@ printf '%s' '{"repoDir":"/absolute/path/to/product","outputDir":"/absolute/path/
 TEA writes:
 
 - `tea-contract-tests.mjs` — executable tests;
-- `tea-plan.json` — the evidence-backed plan.
+- `tea-plan.json` — the evidence-backed plan;
+- `tea-contract-tests.mjs.manifest.json` — SHA-256 identity for both artifacts.
 
 Existing files are not replaced unless `"overwrite": true` is explicitly supplied. Analysis and generation do not contact the product.
 
@@ -77,7 +80,7 @@ printf '%s' '{"testFile":"/absolute/path/to/generated-tests/tea-contract-tests.m
   | node scripts/tea.mjs verify-tests
 ```
 
-Verification runs the selected JavaScript test file with the current user's permissions. Use a controlled product instance. TEA is not a sandbox.
+Verification requires the sidecar manifest and matching test/plan digests; regenerate pre-0.4 artifacts. Tests run in a temporary working directory with an allowlisted environment, but still execute JavaScript with the current user's filesystem and network permissions. Use a controlled product instance: TEA is not a sandbox.
 
 ### 5. Generate source-derived regression tests
 
@@ -88,7 +91,7 @@ printf '%s' '{"repoDir":"/absolute/path/to/product"}' \
   | node scripts/tea.mjs plan-source-tests
 ```
 
-Generate `tea-source-tests.mjs` and `tea-source-plan.json`:
+Generate `tea-source-tests.mjs`, `tea-source-plan.json`, and `tea-source-tests.mjs.manifest.json`:
 
 ```bash
 printf '%s' '{"repoDir":"/absolute/path/to/product","outputDir":"/absolute/path/to/generated-source-tests"}' \
@@ -111,7 +114,7 @@ printf '%s' '{"testFile":"/absolute/path/to/generated-source-tests/tea-source-te
   | node scripts/tea.mjs evaluate-source-tests
 ```
 
-The report contains baseline stability, mutation score and individual outcomes, plus line/branch/function coverage. TEA validates that the test file exactly matches its plan, then applies deterministic operator mutations only to temporary source copies. Original sources are never edited by the quality runner.
+The report contains baseline stability, mutation score and individual outcomes, plus line/branch/function coverage. TEA validates both the manifest digests and exact test/plan correspondence, then applies deterministic operator mutations only to temporary source copies. Original sources are never edited by the quality runner.
 
 Mutation score is `killed / (killed + survived)`; invalid and timed-out mutations are reported separately and fail the gate. To compare coverage with an existing suite, provide `"baselineTestFile":"/absolute/path/to/existing-tests.mjs"`. Without it, the delta is explicitly `null`, not an assumed improvement from zero.
 
@@ -208,6 +211,7 @@ scripts/tea.mjs
                          │
           OpenAPI planner + TypeScript source planner
           schema validator + bounded AST interpreter
+          manifest admission + bounded test runner
 ```
 
 The new TEA workflow is isolated from REA's MCP catalog. The fork temporarily retains inherited infrastructure and source while product-specific functionality is migrated incrementally.
@@ -216,7 +220,7 @@ The new TEA workflow is isolated from REA's MCP catalog. The fork temporarily re
 
 ```bash
 npm run typecheck
-npm run test:local -- src/teaCore.test.ts src/teaMcp.test.ts src/teaSource.test.ts src/teaQuality.test.ts
+npm run test:local -- src/teaCore.test.ts src/teaMcp.test.ts src/teaSource.test.ts src/teaQuality.test.ts src/teaArtifact.test.ts
 npm run build:cached
 npm run verify:tea
 ```
@@ -236,14 +240,15 @@ The tests use temporary repositories and local HTTP servers; they do not require
 - Mutation candidates currently cover a bounded set of operator replacements; they do not represent every possible fault and some may be equivalent.
 - Stability checks repeat tests with randomized order, but cannot detect every time-, network-, or environment-dependent flake.
 - Coverage deltas require a caller-supplied baseline suite and use Node's built-in V8 coverage.
-- Verification executes JavaScript with caller authority; review generated artifacts and use controlled environments.
+- Verification executes JavaScript with caller authority; temporary cwd and environment filtering reduce ambient exposure but do not isolate filesystem or network access.
+- Manifest digests detect accidental or incomplete artifact changes; they are not signatures and do not establish publisher authenticity against a malicious author who can replace all artifacts.
 
 ## Roadmap
 
 1. Broader source-derived integration and property-based tests with independent oracles.
-2. Stronger artifact admission and isolated test execution with reduced ambient credentials.
-3. OpenAPI authentication, setup/teardown, and explicitly authorized state-changing workflows.
-4. Browser observation and Playwright E2E generation.
+2. OpenAPI authentication, setup/teardown, and explicitly authorized state-changing workflows.
+3. Browser observation and Playwright E2E generation.
+4. Optional container-backed execution for stronger isolation.
 5. AI-assisted risk analysis and scenario synthesis with independent oracles.
 6. TEA-only build and progressive removal of unused REA infrastructure.
 

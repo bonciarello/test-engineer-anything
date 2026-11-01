@@ -137,6 +137,7 @@ export const evaluateSourceTests = async (
     const result = await verifyGeneratedTests({
       testFile: input.baselineTestFile,
       coverageInclude: sources,
+      artifactPolicy: "trusted",
       ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
     });
     baselineCoverage = result.coverage ?? null;
@@ -308,6 +309,7 @@ const runMutations = async (
     );
     const workspaceBaseline = await verifyGeneratedTests({
       testFile: workspaceTest,
+      artifactPolicy: "trusted",
       ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
     });
     if (!workspaceBaseline.passed)
@@ -347,6 +349,7 @@ const runMutations = async (
       try {
         const result = await verifyGeneratedTests({
           testFile: workspaceTest,
+          artifactPolicy: "trusted",
           ...(input.timeoutMs === undefined
             ? {}
             : { timeoutMs: input.timeoutMs }),

@@ -124,7 +124,7 @@ export interface AnalyzeProductResult {
 
 export interface GeneratedFile {
   readonly path: string;
-  readonly kind: "test" | "plan";
+  readonly kind: "test" | "plan" | "manifest";
 }
 
 export interface GenerateTestsResult {
@@ -153,6 +153,11 @@ export interface VerifyTestsResult {
   readonly durationMs: number;
   readonly output: string;
   readonly limitations: readonly string[];
+  readonly environment: {
+    readonly inheritedAmbient: false;
+    readonly forwardedVariables: readonly string[];
+    readonly explicitVariables: readonly string[];
+  };
   readonly randomSeed?: number;
   readonly coverage?: CoverageSummary | null;
 }
@@ -177,6 +182,8 @@ export interface VerifyInput {
   /** Internal quality-runner controls; public CLI/MCP schemas do not expose them. */
   readonly randomSeed?: number;
   readonly coverageInclude?: readonly string[];
+  /** Internal only: trusted workspaces and explicit baseline suites. */
+  readonly artifactPolicy?: "required" | "trusted";
 }
 
 /** Primitive TypeScript parameter/return types accepted by source tests. */
