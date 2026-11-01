@@ -1,7 +1,7 @@
 {
   "name": "tea-agents",
   "mcpName": "io.github.bonciarello/test-engineer-anything",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Analyze products and generate evidence-backed executable tests from your terminal or agent.",
   "license": "MIT",
   "repository": {

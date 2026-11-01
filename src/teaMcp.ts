@@ -5,6 +5,7 @@ import { z } from "zod";
 import { PACKAGE_METADATA } from "./generatedPackageMetadata.js";
 import {
   analyzeProduct,
+  evaluateSourceTests,
   generateSourceTestArtifacts,
   generateTestArtifacts,
   planContractTests,
@@ -30,8 +31,18 @@ const verifySchema = z.object({
   baseUrl: z.string().min(1).optional(),
   timeoutMs: z.number().positive().optional(),
 });
+const evaluateSchema = z.object({
+  testFile: z.string().min(1),
+  planFile: z.string().min(1).optional(),
+  baselineTestFile: z.string().min(1).optional(),
+  repetitions: z.number().int().min(1).max(10).optional(),
+  mutationLimit: z.number().int().min(0).max(200).optional(),
+  minimumMutationScore: z.number().min(0).max(1).optional(),
+  timeoutMs: z.number().positive().optional(),
+  coverage: z.boolean().optional(),
+});
 
-/** Build the TEA MCP server with all six tools registered. */
+/** Build the TEA MCP server with all seven tools registered. */
 export const createTeaMcpServer = (): McpServer => {
   const server = new McpServer(
     { name: "tea-agents", version: PACKAGE_METADATA.version },
@@ -109,6 +120,17 @@ export const createTeaMcpServer = (): McpServer => {
             : { overwrite: input.overwrite }),
         }),
       ),
+  );
+
+  server.registerTool(
+    "evaluate_source_tests",
+    {
+      title: "Evaluate source tests",
+      description:
+        "Measure source-test stability, mutation sensitivity, and coverage against an optional baseline.",
+      inputSchema: evaluateSchema,
+    },
+    (input) => handle(() => evaluateSourceTests(input)),
   );
 
   server.registerTool(

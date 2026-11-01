@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+### Features
+
+- Add source-test quality evaluation through `evaluate-source-tests` and `evaluate_source_tests`.
+- Measure baseline stability with bounded repetitions, randomized test order, and deterministic seeds.
+- Generate deterministic operator mutations and execute them only against temporary source copies.
+- Report killed, survived, timed-out, and invalid mutants with a configurable mutation-score threshold.
+- Measure line, branch, and function coverage with Node's native test coverage and compute deltas against an optional baseline suite.
+- Verify exact test/plan artifact correspondence before quality evaluation.
+
+### Validation
+
+- Cover surviving mutants, stale mutation offsets, artifact tampering, absent baselines, coverage deltas, and preservation of original sources.
+- Require a 100% mutation score in the bundled end-to-end example.
+
 ## 0.2.0
 
 ### Features

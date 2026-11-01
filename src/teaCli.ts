@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PACKAGE_METADATA } from "./generatedPackageMetadata.js";
 import {
   analyzeProduct,
+  evaluateSourceTests,
   generateSourceTestArtifacts,
   generateTestArtifacts,
   planContractTests,
@@ -30,6 +31,16 @@ const verifySchema = z.object({
   testFile: z.string().min(1),
   baseUrl: z.string().min(1).optional(),
   timeoutMs: z.number().positive().optional(),
+});
+const evaluateSchema = z.object({
+  testFile: z.string().min(1),
+  planFile: z.string().min(1).optional(),
+  baselineTestFile: z.string().min(1).optional(),
+  repetitions: z.number().int().min(1).max(10).optional(),
+  mutationLimit: z.number().int().min(0).max(200).optional(),
+  minimumMutationScore: z.number().min(0).max(1).optional(),
+  timeoutMs: z.number().positive().optional(),
+  coverage: z.boolean().optional(),
 });
 
 type CommandHandler = (input: unknown) => Promise<unknown>;
@@ -61,6 +72,8 @@ const COMMANDS: Readonly<Record<string, CommandHandler>> = {
         : { overwrite: parsed.overwrite }),
     });
   },
+  "evaluate-source-tests": async (input) =>
+    evaluateSourceTests(evaluateSchema.parse(input)),
   "verify-tests": async (input) => {
     const parsed = verifySchema.parse(input);
     return verifyGeneratedTests({
@@ -73,7 +86,7 @@ const COMMANDS: Readonly<Record<string, CommandHandler>> = {
   },
 };
 
-const HELP_TEXT = `tea-agents — contract-test planner for Node/TypeScript OpenAPI services
+const HELP_TEXT = `tea-agents — evidence-backed test generator and quality runner
 
 Usage:
   tea <command> [--input <file>]
@@ -84,6 +97,7 @@ Commands:
   plan-source-tests      Plan unit/regression tests from pure exported TypeScript functions
   generate-tests         Generate a standalone node:test .mjs file and tea-plan.json
   generate-source-tests  Generate tea-source-tests.mjs and tea-source-plan.json
+  evaluate-source-tests  Measure stability, mutation sensitivity, and coverage
   verify-tests           Run a generated test file against a live TEA_BASE_URL (optional for source tests)
 
 Each command reads one JSON document from stdin (or from --input <file>):
@@ -93,6 +107,7 @@ Each command reads one JSON document from stdin (or from --input <file>):
   plan-source-tests      { "repoDir": "/path/to/repo" }
   generate-tests         { "repoDir": "...", "outputDir": "...", "overwrite": false }
   generate-source-tests  { "repoDir": "...", "outputDir": "...", "overwrite": false }
+  evaluate-source-tests  { "testFile": "...", "repetitions": 3, "minimumMutationScore": 0.8 }
   verify-tests           { "testFile": "...", "baseUrl": "http://localhost:3000", "timeoutMs": 30000 }
 
 Options:

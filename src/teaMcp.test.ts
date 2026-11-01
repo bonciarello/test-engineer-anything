@@ -22,12 +22,13 @@ const connect = async (): Promise<{
 };
 
 describe("tea MCP server", () => {
-  it("advertises the six tools", async () => {
+  it("advertises the seven tools", async () => {
     const { server, client } = await connect();
     try {
       const tools = await client.listTools();
       expect(tools.tools.map((tool) => tool.name).sort()).toEqual([
         "analyze_product",
+        "evaluate_source_tests",
         "generate_source_tests",
         "generate_tests",
         "plan_source_tests",

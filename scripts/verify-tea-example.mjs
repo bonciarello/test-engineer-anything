@@ -79,6 +79,15 @@ try {
     throw new Error(
       `generated source tests failed: ${sourceVerification.output}`,
     );
+  const quality = run("evaluate-source-tests", {
+    testFile: sourceTestFile,
+    repetitions: 2,
+    minimumMutationScore: 1,
+  });
+  if (!quality.passed || !quality.stable || quality.mutations.score !== 1)
+    throw new Error(
+      `source quality gate failed: ${JSON.stringify(quality.mutations)}`,
+    );
 
   server = spawn(process.execPath, [join(example, "server.mjs")], {
     cwd: root,
@@ -126,6 +135,9 @@ try {
       verificationPassed: verification.passed,
       sourcePlannedCases: sourcePlan.cases.length,
       sourceVerificationPassed: sourceVerification.passed,
+      sourceQualityPassed: quality.passed,
+      mutationScore: quality.mutations.score,
+      generatedLineCoverage: quality.coverage.generated?.lines ?? null,
     })}\n`,
   );
 } finally {

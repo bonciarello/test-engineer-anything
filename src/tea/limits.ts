@@ -28,6 +28,10 @@ export const SOURCE_TEST_LIMITS = {
   maxCasesPerFunction: 16,
   /** Maximum AST nodes visited while validating or interpreting one expression. */
   maxInterpreterSteps: 2_000,
+  /** Maximum mutation candidates retained for one exported function. */
+  maxMutationsPerFunction: 16,
+  /** Maximum mutation candidates retained in one source plan. */
+  maxSourceMutations: 200,
 } as const;
 
 /** Default verify timeout in milliseconds. */

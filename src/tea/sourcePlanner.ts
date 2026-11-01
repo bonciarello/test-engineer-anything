@@ -15,6 +15,7 @@ import { extname } from "node:path";
 
 import { canonicalDirectory, walkRepository } from "./analyze.js";
 import { SOURCE_TEST_LIMITS, TEA_LIMITS } from "./limits.js";
+import { createSourceMutations } from "./sourceMutations.js";
 import {
   finalizeValue,
   generateCases,
@@ -29,6 +30,7 @@ import {
 import type {
   ExcludedSourceExport,
   PlanSourceInput,
+  SourceMutation,
   SourcePrimitiveValue,
   SourceTestCase,
   SourceTestPlan,
@@ -74,6 +76,7 @@ export const planSourceTests = async (
 class SourcePlanner {
   private readonly cases: SourceTestCase[] = [];
   private readonly excluded: ExcludedSourceExport[] = [];
+  private readonly mutations: SourceMutation[] = [];
   private readonly usedIds = new Map<string, number>();
   private functionCount = 0;
 
@@ -89,6 +92,7 @@ class SourcePlanner {
       cases: this.cases,
       excluded: this.excluded,
       limitations: this.limitations,
+      mutations: this.mutations,
     };
   }
 
@@ -173,7 +177,7 @@ class SourcePlanner {
         continue;
       }
       this.functionCount += 1;
-      this.planFunction(filePath, candidate);
+      this.planFunction(filePath, candidate, text);
     }
   }
 
@@ -323,7 +327,11 @@ class SourcePlanner {
     return { impurity, candidates, exclusions };
   }
 
-  private planFunction(filePath: string, candidate: CandidateExport): void {
+  private planFunction(
+    filePath: string,
+    candidate: CandidateExport,
+    sourceText: string,
+  ): void {
     const validated = validateFunction(candidate.node);
     if (!validated.ok) {
       this.excluded.push(
@@ -388,6 +396,21 @@ class SourcePlanner {
       return;
     }
     this.cases.push(...planned);
+    const mutations = createSourceMutations(
+      sourceText,
+      filePath,
+      candidate.name,
+      fn.body,
+    );
+    const remaining = Math.max(
+      0,
+      SOURCE_TEST_LIMITS.maxSourceMutations - this.mutations.length,
+    );
+    this.mutations.push(...mutations.slice(0, remaining));
+    if (mutations.length > remaining)
+      this.limitations.push(
+        `source mutation limit of ${SOURCE_TEST_LIMITS.maxSourceMutations} reached`,
+      );
   }
 
   private makeCase(

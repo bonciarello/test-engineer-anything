@@ -42,7 +42,7 @@ export const generateSourceTestArtifacts = async (
   };
 };
 
-const renderSourceTestFile = (
+export const renderSourceTestFile = (
   outputDir: string,
   cases: readonly SourceTestCase[],
 ): string => {

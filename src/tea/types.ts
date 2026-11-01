@@ -135,6 +135,12 @@ export interface GenerateTestsResult {
   readonly limitations: readonly string[];
 }
 
+export interface CoverageSummary {
+  readonly lines: number;
+  readonly branches: number;
+  readonly functions: number;
+}
+
 export interface VerifyTestsResult {
   readonly testFile: string;
   /** Null when no base URL was supplied (source tests do not need one). */
@@ -147,6 +153,8 @@ export interface VerifyTestsResult {
   readonly durationMs: number;
   readonly output: string;
   readonly limitations: readonly string[];
+  readonly randomSeed?: number;
+  readonly coverage?: CoverageSummary | null;
 }
 
 export interface PlanInput {
@@ -166,6 +174,9 @@ export interface VerifyInput {
   /** Optional: source tests do not need a base URL; contract tests do. */
   readonly baseUrl?: string;
   readonly timeoutMs?: number;
+  /** Internal quality-runner controls; public CLI/MCP schemas do not expose them. */
+  readonly randomSeed?: number;
+  readonly coverageInclude?: readonly string[];
 }
 
 /** Primitive TypeScript parameter/return types accepted by source tests. */
@@ -207,6 +218,18 @@ export interface ExcludedSourceExport {
   readonly reason: string;
 }
 
+/** A deterministic source edit used to assess regression-test sensitivity. */
+export interface SourceMutation {
+  readonly id: string;
+  readonly sourcePath: string;
+  readonly exportName: string;
+  readonly kind: "operator";
+  readonly start: number;
+  readonly end: number;
+  readonly original: string;
+  readonly replacement: string;
+}
+
 /** The source-test plan shared by generate and verify workflows. */
 export interface SourceTestPlan {
   readonly repoDir: string;
@@ -215,6 +238,8 @@ export interface SourceTestPlan {
   readonly cases: readonly SourceTestCase[];
   readonly excluded: readonly ExcludedSourceExport[];
   readonly limitations: readonly string[];
+  /** Absent only in plans generated before mutation support. */
+  readonly mutations?: readonly SourceMutation[] | undefined;
 }
 
 export interface PlanSourceInput {
@@ -234,5 +259,70 @@ export interface GenerateSourceResult {
   readonly files: readonly GeneratedFile[];
   readonly caseCount: number;
   readonly excludedCount: number;
+  readonly limitations: readonly string[];
+}
+
+export interface EvaluateSourceTestsInput {
+  readonly testFile: string;
+  readonly planFile?: string | undefined;
+  readonly baselineTestFile?: string | undefined;
+  readonly repetitions?: number | undefined;
+  readonly mutationLimit?: number | undefined;
+  readonly minimumMutationScore?: number | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly coverage?: boolean | undefined;
+}
+
+export interface QualityRun {
+  readonly passed: boolean;
+  readonly exitCode: number | null;
+  readonly timedOut: boolean;
+  readonly durationMs: number;
+  readonly randomSeed: number | null;
+  readonly output?: string;
+}
+
+export type MutationStatus = "killed" | "survived" | "timed_out" | "invalid";
+
+export interface MutationResult {
+  readonly id: string;
+  readonly sourcePath: string;
+  readonly exportName: string;
+  readonly original: string;
+  readonly replacement: string;
+  readonly status: MutationStatus;
+  readonly durationMs: number;
+  readonly limitation?: string;
+}
+
+export interface MutationSummary {
+  readonly total: number;
+  readonly killed: number;
+  readonly survived: number;
+  readonly timedOut: number;
+  readonly invalid: number;
+  readonly score: number | null;
+  readonly results: readonly MutationResult[];
+}
+
+export interface CoverageDelta {
+  readonly lines: number;
+  readonly branches: number;
+  readonly functions: number;
+}
+
+export interface SourceQualityReport {
+  readonly testFile: string;
+  readonly planFile: string;
+  readonly passed: boolean;
+  readonly minimumMutationScore: number;
+  readonly stable: boolean;
+  readonly baseline: readonly QualityRun[];
+  readonly mutations: MutationSummary;
+  readonly coverage: {
+    readonly generated: CoverageSummary | null;
+    readonly baseline: CoverageSummary | null;
+    readonly delta: CoverageDelta | null;
+  };
   readonly limitations: readonly string[];
 }

@@ -4,4 +4,5 @@ export { planContractTests } from "./plan.js";
 export { generateTestArtifacts } from "./generate.js";
 export { verifyGeneratedTests } from "./verify.js";
 export { generateSourceTestArtifacts, planSourceTests } from "./source.js";
+export { evaluateSourceTests } from "./sourceQuality.js";
 export { TeaError } from "./types.js";

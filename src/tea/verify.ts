@@ -6,7 +6,11 @@ import {
   DEFAULT_VERIFY_TIMEOUT_MS,
   MAX_VERIFY_OUTPUT_BYTES,
 } from "./limits.js";
-import type { VerifyInput, VerifyTestsResult } from "./types.js";
+import type {
+  CoverageSummary,
+  VerifyInput,
+  VerifyTestsResult,
+} from "./types.js";
 import { TeaError } from "./types.js";
 
 /**
@@ -25,7 +29,25 @@ export const verifyGeneratedTests = async (
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
     throw new TeaError("invalid_input", "timeoutMs must be a positive number");
 
-  const command = [process.execPath, "--test", testFile];
+  const randomSeed = input.randomSeed;
+  if (
+    randomSeed !== undefined &&
+    (!Number.isInteger(randomSeed) || randomSeed < 0)
+  )
+    throw new TeaError(
+      "invalid_input",
+      "randomSeed must be a non-negative integer",
+    );
+  const coverageRequested = (input.coverageInclude?.length ?? 0) > 0;
+  const command = [process.execPath, "--test"];
+  if (randomSeed !== undefined)
+    command.push("--test-randomize", `--test-random-seed=${randomSeed}`);
+  if (coverageRequested) {
+    command.push("--experimental-test-coverage");
+    for (const sourcePath of input.coverageInclude ?? [])
+      command.push(`--test-coverage-include=${sourcePath}`);
+  }
+  command.push(testFile);
   const started = performance.now();
   const outcome = await runBounded(
     command,
@@ -37,6 +59,11 @@ export const verifyGeneratedTests = async (
     limitations.push(
       `captured output truncated at ${MAX_VERIFY_OUTPUT_BYTES} bytes`,
     );
+  const coverage = coverageRequested
+    ? parseCoverageSummary(outcome.output)
+    : null;
+  if (coverageRequested && coverage === null)
+    limitations.push("Node coverage summary could not be parsed");
 
   return {
     testFile,
@@ -48,7 +75,25 @@ export const verifyGeneratedTests = async (
     durationMs: Math.round(performance.now() - started),
     output: outcome.output,
     limitations,
+    ...(randomSeed === undefined ? {} : { randomSeed }),
+    ...(coverageRequested ? { coverage } : {}),
   };
+};
+
+const parseCoverageSummary = (output: string): CoverageSummary | null => {
+  const match =
+    /all files\s+\|\s*(\d+(?:\.\d+)?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|/u.exec(
+      output,
+    );
+  if (match === null) return null;
+  const lines = Number(match[1]);
+  const branches = Number(match[2]);
+  const functions = Number(match[3]);
+  return Number.isFinite(lines) &&
+    Number.isFinite(branches) &&
+    Number.isFinite(functions)
+    ? { lines, branches, functions }
+    : null;
 };
 
 const validateBaseUrl = (value: string): string => {
